@@ -1,6 +1,6 @@
 """
 EUR/USD Impact Analyzer
-Aplicación premium para analizar el impacto del tipo de cambio EUR/USD en distintos activos y carteras
+Aplicación para analizar el impacto del tipo de cambio EUR/USD en activos y carteras
 """
 
 import streamlit as st
@@ -8,13 +8,11 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from scipy import stats
 
 # ══════════════════════════════════════════════════════════════════════════════
-# CONFIGURACIÓN Y ESTILOS
+# CONFIGURACIÓN
 # ══════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
@@ -24,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS Premium - Dark Mode con acentos dorados
+# CSS Premium
 CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
@@ -54,65 +52,60 @@ CUSTOM_CSS = """
     h1, h2, h3 {
         font-family: 'DM Sans', sans-serif !important;
         font-weight: 700 !important;
-        letter-spacing: -0.02em;
     }
     
     p, span, label, .stMarkdown {
         font-family: 'DM Sans', sans-serif !important;
     }
     
-    /* Header principal */
     .main-header {
         text-align: center;
-        padding: 2rem 0 3rem 0;
+        padding: 1.5rem 0 2rem 0;
         border-bottom: 1px solid var(--border-color);
         margin-bottom: 2rem;
     }
     
     .main-header h1 {
-        font-size: 3.5rem !important;
+        font-size: 2.8rem !important;
         background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 50%, var(--accent-gold) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
     }
     
     .main-header p {
         color: var(--text-secondary);
-        font-size: 1.1rem;
-        letter-spacing: 0.1em;
+        font-size: 1rem;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
     }
     
-    /* Cards métricas */
     .metric-card {
         background: linear-gradient(145deg, var(--bg-card) 0%, #1f1f2e 100%);
         border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 1.5rem;
+        border-radius: 12px;
+        padding: 1.2rem;
         text-align: center;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
     
     .metric-card:hover {
         border-color: var(--accent-gold);
         transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(212, 175, 55, 0.15);
     }
     
     .metric-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: var(--text-secondary);
         text-transform: uppercase;
-        letter-spacing: 0.15em;
-        margin-bottom: 0.5rem;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.4rem;
     }
     
     .metric-value {
         font-family: 'Space Mono', monospace !important;
-        font-size: 1.8rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: var(--text-primary);
     }
@@ -121,59 +114,23 @@ CUSTOM_CSS = """
     .metric-value.negative { color: var(--negative); }
     .metric-value.gold { color: var(--accent-gold); }
     
-    /* Sección headers */
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin: 2.5rem 0 1.5rem 0;
-        padding-bottom: 0.75rem;
-        border-bottom: 2px solid var(--border-color);
-    }
-    
-    .section-header h2 {
-        font-size: 1.5rem !important;
-        color: var(--text-primary);
-        margin: 0;
-    }
-    
-    .section-icon {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
-    
-    /* Sidebar */
     [data-testid="stSidebar"] {
         background: var(--bg-secondary) !important;
         border-right: 1px solid var(--border-color);
     }
     
-    [data-testid="stSidebar"] .stMarkdown h3 {
-        color: var(--accent-gold) !important;
-        font-size: 0.9rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-    
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0;
         background: var(--bg-card);
-        border-radius: 12px;
+        border-radius: 10px;
         padding: 4px;
     }
     
     .stTabs [data-baseweb="tab"] {
         background: transparent;
         color: var(--text-secondary);
-        border-radius: 8px;
-        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        padding: 0.6rem 1.2rem;
         font-weight: 500;
     }
     
@@ -182,56 +139,21 @@ CUSTOM_CSS = """
         color: var(--bg-primary) !important;
     }
     
-    /* DataFrames */
-    .stDataFrame {
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        overflow: hidden;
-    }
-    
-    /* Selectbox y inputs */
-    .stSelectbox > div > div,
-    .stMultiSelect > div > div,
-    .stSlider > div > div > div {
-        background: var(--bg-card) !important;
-        border-color: var(--border-color) !important;
-    }
-    
-    /* Tooltip info */
     .info-box {
         background: rgba(212, 175, 55, 0.1);
         border: 1px solid rgba(212, 175, 55, 0.3);
-        border-radius: 10px;
-        padding: 1rem;
+        border-radius: 8px;
+        padding: 0.8rem;
         margin: 1rem 0;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: var(--text-secondary);
-    }
-    
-    /* Animación de entrada */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .animate-in {
-        animation: fadeInUp 0.6s ease forwards;
     }
 </style>
 """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE COLORES PLOTLY
-# ══════════════════════════════════════════════════════════════════════════════
-
+# Colores
 COLORS = {
     'gold': '#d4af37',
     'gold_light': '#f4d03f',
@@ -245,35 +167,25 @@ COLORS = {
     'palette': ['#d4af37', '#00d084', '#ff6b6b', '#4ecdc4', '#9b59b6', '#3498db', '#e67e22', '#1abc9c']
 }
 
-PLOTLY_LAYOUT = dict(
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    font=dict(family='DM Sans, sans-serif', color=COLORS['text']),
-    xaxis=dict(
-        gridcolor=COLORS['grid'],
-        zerolinecolor=COLORS['grid'],
-        tickfont=dict(color=COLORS['text_secondary'])
-    ),
-    yaxis=dict(
-        gridcolor=COLORS['grid'],
-        zerolinecolor=COLORS['grid'],
-        tickfont=dict(color=COLORS['text_secondary'])
-    ),
-    legend=dict(
-        bgcolor='rgba(26,26,36,0.8)',
-        bordercolor=COLORS['grid'],
-        font=dict(color=COLORS['text_secondary'])
-    ),
-    margin=dict(l=20, r=20, t=40, b=20)
-)
+def get_plotly_layout(height=400):
+    return dict(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='DM Sans, sans-serif', color=COLORS['text']),
+        height=height,
+        margin=dict(l=20, r=20, t=50, b=20),
+        xaxis=dict(gridcolor=COLORS['grid'], zerolinecolor=COLORS['grid']),
+        yaxis=dict(gridcolor=COLORS['grid'], zerolinecolor=COLORS['grid']),
+        legend=dict(bgcolor='rgba(26,26,36,0.8)', bordercolor=COLORS['grid'])
+    )
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FUNCIONES DE DATOS
+# FUNCIONES
 # ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(ttl=3600)
 def get_data(tickers: list, start_date: str, end_date: str) -> pd.DataFrame:
-    """Descarga datos de yfinance con manejo de errores"""
+    """Descarga datos de yfinance"""
     try:
         data = yf.download(
             tickers,
@@ -292,22 +204,16 @@ def get_data(tickers: list, start_date: str, end_date: str) -> pd.DataFrame:
         st.error(f"Error descargando datos: {e}")
         return pd.DataFrame()
 
-def calculate_returns(prices: pd.DataFrame, method: str = 'log') -> pd.DataFrame:
-    """Calcula retornos logarítmicos o simples"""
-    if method == 'log':
-        return np.log(prices / prices.shift(1)).dropna()
-    return prices.pct_change().dropna()
+def calculate_returns(prices: pd.DataFrame) -> pd.DataFrame:
+    """Retornos logarítmicos"""
+    return np.log(prices / prices.shift(1)).dropna()
 
-def calculate_rolling_correlation(returns: pd.DataFrame, base: str, window: int = 60) -> pd.DataFrame:
-    """Calcula correlación rolling contra un activo base"""
-    correlations = pd.DataFrame(index=returns.index)
-    for col in returns.columns:
-        if col != base:
-            correlations[col] = returns[col].rolling(window=window).corr(returns[base])
-    return correlations.dropna()
+def calculate_cumulative_returns(prices: pd.DataFrame) -> pd.DataFrame:
+    """Retornos acumulados (base 100)"""
+    return (prices / prices.iloc[0]) * 100
 
 def calculate_beta(returns: pd.DataFrame, asset: str, benchmark: str) -> dict:
-    """Calcula beta y R² de un activo contra un benchmark"""
+    """Calcula beta, alpha y R²"""
     mask = returns[[asset, benchmark]].dropna().index
     y = returns.loc[mask, asset]
     x = returns.loc[mask, benchmark]
@@ -316,109 +222,77 @@ def calculate_beta(returns: pd.DataFrame, asset: str, benchmark: str) -> dict:
     
     return {
         'beta': slope,
-        'alpha': intercept * 252,  # Anualizado
+        'alpha': intercept * 252,
         'r_squared': r_value**2,
-        'p_value': p_value,
-        'std_err': std_err
+        'p_value': p_value
     }
 
-def calculate_portfolio_sensitivity(returns: pd.DataFrame, weights: dict, fx: str) -> dict:
-    """Calcula la sensibilidad de una cartera al FX"""
-    portfolio_returns = sum(returns[asset] * weight for asset, weight in weights.items())
-    
-    mask = returns[fx].dropna().index
-    port_ret = portfolio_returns.loc[mask]
-    fx_ret = returns.loc[mask, fx]
-    
-    corr = port_ret.corr(fx_ret)
-    beta_info = stats.linregress(fx_ret, port_ret)
-    
-    return {
-        'correlation': corr,
-        'beta': beta_info.slope,
-        'r_squared': beta_info.rvalue**2,
-        'volatility_contribution': abs(beta_info.slope) * fx_ret.std() * np.sqrt(252)
-    }
+def calculate_rolling_correlation(returns: pd.DataFrame, base: str, window: int = 60) -> pd.DataFrame:
+    """Correlación rolling"""
+    correlations = pd.DataFrame(index=returns.index)
+    for col in returns.columns:
+        if col != base:
+            correlations[col] = returns[col].rolling(window=window).corr(returns[base])
+    return correlations.dropna()
 
 # ══════════════════════════════════════════════════════════════════════════════
-# INTERFAZ PRINCIPAL
+# SIDEBAR
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Header
-st.markdown("""
-<div class="main-header animate-in">
-    <h1>💱 EUR/USD Impact Analyzer</h1>
-    <p>Análisis del impacto del tipo de cambio en activos y carteras</p>
-</div>
-""", unsafe_allow_html=True)
-
-# Sidebar
 with st.sidebar:
-    st.markdown("### ⚙️ Configuración")
+    st.markdown("## ⚙️ Configuración")
     
-    # Período de análisis
+    # Período
+    st.markdown("#### 📅 Período")
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input(
-            "Inicio",
-            value=datetime.now() - timedelta(days=365*3),
-            max_value=datetime.now()
-        )
+        start_date = st.date_input("Inicio", value=datetime.now() - timedelta(days=365*3))
     with col2:
-        end_date = st.date_input(
-            "Fin",
-            value=datetime.now(),
-            max_value=datetime.now()
-        )
+        end_date = st.date_input("Fin", value=datetime.now())
     
     st.markdown("---")
-    st.markdown("### 📊 Activos a Analizar")
     
-    # Activos predefinidos por categoría
-    ASSET_CATEGORIES = {
-        "🇺🇸 US Equities": {
-            "SPY": "S&P 500 ETF",
-            "QQQ": "Nasdaq 100 ETF",
-            "IWM": "Russell 2000 ETF",
-            "DIA": "Dow Jones ETF"
-        },
-        "🇪🇺 EU Equities": {
-            "EZU": "Eurozone ETF",
-            "VGK": "Europe ETF",
-            "EWG": "Germany ETF",
-            "EWQ": "France ETF"
-        },
-        "🌍 Emergentes": {
-            "EEM": "Emerging Markets ETF",
-            "EWZ": "Brazil ETF",
-            "FXI": "China Large Cap"
-        },
-        "📦 Commodities": {
-            "GLD": "Gold ETF",
-            "SLV": "Silver ETF",
-            "USO": "Oil ETF",
-            "DBA": "Agriculture ETF"
-        },
-        "💵 Renta Fija": {
-            "TLT": "US Long Bonds",
-            "IEF": "US 7-10Y Bonds",
-            "LQD": "Investment Grade Corp",
-            "HYG": "High Yield Corp"
-        }
+    # Activos - Selección simple
+    st.markdown("#### 📊 Activos")
+    
+    ASSETS = {
+        "SPY": "S&P 500",
+        "QQQ": "Nasdaq 100",
+        "EZU": "Eurozone",
+        "VGK": "Europe",
+        "EWG": "Germany",
+        "EEM": "Emerging Mkts",
+        "GLD": "Gold",
+        "SLV": "Silver",
+        "USO": "Oil",
+        "TLT": "US Long Bonds",
+        "IEF": "US 7-10Y Bonds",
+        "HYG": "High Yield"
     }
     
-    selected_assets = []
-    for category, assets in ASSET_CATEGORIES.items():
-        with st.expander(category, expanded=True):
-            for ticker, name in assets.items():
-                if st.checkbox(f"{ticker} - {name}", value=ticker in ["SPY", "EZU", "GLD", "TLT"]):
-                    selected_assets.append(ticker)
+    selected_assets = st.multiselect(
+        "Seleccionar activos:",
+        options=list(ASSETS.keys()),
+        default=["SPY", "EZU", "GLD", "TLT"],
+        format_func=lambda x: f"{x} - {ASSETS[x]}"
+    )
     
     st.markdown("---")
-    st.markdown("### 🔧 Parámetros")
     
-    rolling_window = st.slider("Ventana Rolling (días)", 20, 120, 60)
-    return_method = st.selectbox("Tipo de Retorno", ["log", "simple"], index=0)
+    # Parámetros
+    st.markdown("#### 🔧 Parámetros")
+    rolling_window = st.slider("Ventana Rolling", 20, 120, 60)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HEADER
+# ══════════════════════════════════════════════════════════════════════════════
+
+st.markdown("""
+<div class="main-header">
+    <h1>💱 EUR/USD Impact Analyzer</h1>
+    <p>Impacto del tipo de cambio en activos y carteras</p>
+</div>
+""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CARGA DE DATOS
@@ -428,46 +302,33 @@ if len(selected_assets) == 0:
     st.warning("⚠️ Selecciona al menos un activo en el panel lateral")
     st.stop()
 
-# Añadir EUR/USD a la lista
 all_tickers = ["EURUSD=X"] + selected_assets
 
-with st.spinner("Descargando datos de mercado..."):
+with st.spinner("Descargando datos..."):
     prices = get_data(all_tickers, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
 if prices.empty:
-    st.error("No se pudieron obtener datos. Verifica la conexión y los tickers.")
+    st.error("No se pudieron obtener datos.")
     st.stop()
 
-# Renombrar EUR/USD para claridad
 prices = prices.rename(columns={"EURUSD=X": "EUR/USD"})
-returns = calculate_returns(prices, return_method)
+returns = calculate_returns(prices)
+cum_returns = calculate_cumulative_returns(prices)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MÉTRICAS PRINCIPALES
+# MÉTRICAS EUR/USD
 # ══════════════════════════════════════════════════════════════════════════════
 
-st.markdown("""
-<div class="section-header">
-    <div class="section-icon">📈</div>
-    <h2>Resumen EUR/USD</h2>
-</div>
-""", unsafe_allow_html=True)
-
-# Métricas del EUR/USD
 eurusd_current = prices["EUR/USD"].iloc[-1]
 eurusd_change = (prices["EUR/USD"].iloc[-1] / prices["EUR/USD"].iloc[0] - 1) * 100
 eurusd_vol = returns["EUR/USD"].std() * np.sqrt(252) * 100
-eurusd_max = prices["EUR/USD"].max()
-eurusd_min = prices["EUR/USD"].min()
 
-cols = st.columns(5)
-
+cols = st.columns(4)
 metrics = [
-    ("Cotización Actual", f"{eurusd_current:.4f}", "gold"),
+    ("EUR/USD Actual", f"{eurusd_current:.4f}", "gold"),
     ("Cambio Período", f"{eurusd_change:+.2f}%", "positive" if eurusd_change >= 0 else "negative"),
     ("Volatilidad Anual", f"{eurusd_vol:.1f}%", "gold"),
-    ("Máximo", f"{eurusd_max:.4f}", "positive"),
-    ("Mínimo", f"{eurusd_min:.4f}", "negative")
+    ("Días Analizados", f"{len(prices)}", "gold")
 ]
 
 for col, (label, value, color_class) in zip(cols, metrics):
@@ -479,186 +340,173 @@ for col, (label, value, color_class) in zip(cols, metrics):
         </div>
         """, unsafe_allow_html=True)
 
+st.markdown("<br>", unsafe_allow_html=True)
+
 # ══════════════════════════════════════════════════════════════════════════════
-# TABS PRINCIPALES
+# TABS
 # ══════════════════════════════════════════════════════════════════════════════
 
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Correlaciones", "📉 Análisis Beta", "🔄 Rolling Analysis", "💼 Portfolio Impact"])
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Retornos Acumulados", "⚡ Impacto EUR/USD", "🔄 Correlación Rolling", "💼 Simulador Cartera"])
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 1: CORRELACIONES
+# TAB 1: RETORNOS ACUMULADOS
 # ─────────────────────────────────────────────────────────────────────────────
 
 with tab1:
-    st.markdown("### Matriz de Correlación con EUR/USD")
+    st.markdown("### Retornos Acumulados (Base 100)")
     
-    # Calcular correlaciones
-    corr_matrix = returns.corr()
-    eurusd_corr = corr_matrix["EUR/USD"].drop("EUR/USD").sort_values()
+    fig = go.Figure()
     
-    col1, col2 = st.columns([2, 1])
+    # EUR/USD primero con línea más gruesa
+    fig.add_trace(go.Scatter(
+        x=cum_returns.index,
+        y=cum_returns["EUR/USD"],
+        mode='lines',
+        name='EUR/USD',
+        line=dict(color=COLORS['gold'], width=3),
+        hovertemplate="EUR/USD<br>%{x}<br>%{y:.2f}<extra></extra>"
+    ))
     
-    with col1:
-        # Heatmap de correlaciones
-        fig_heatmap = go.Figure(data=go.Heatmap(
-            z=corr_matrix.values,
-            x=corr_matrix.columns,
-            y=corr_matrix.index,
-            colorscale=[
-                [0, COLORS['negative']],
-                [0.5, COLORS['card']],
-                [1, COLORS['positive']]
-            ],
-            zmid=0,
-            text=np.round(corr_matrix.values, 2),
-            texttemplate="%{text}",
-            textfont=dict(size=11, color=COLORS['text']),
-            hovertemplate="<b>%{x}</b> vs <b>%{y}</b><br>Correlación: %{z:.3f}<extra></extra>"
-        ))
-        
-        fig_heatmap.update_layout(
-            **PLOTLY_LAYOUT,
-            height=500,
-            title=dict(text="Matriz de Correlación Completa", font=dict(size=16, color=COLORS['gold']))
-        )
-        
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+    # Resto de activos
+    for i, col in enumerate(selected_assets):
+        if col in cum_returns.columns:
+            fig.add_trace(go.Scatter(
+                x=cum_returns.index,
+                y=cum_returns[col],
+                mode='lines',
+                name=col,
+                line=dict(color=COLORS['palette'][(i+1) % len(COLORS['palette'])], width=2),
+                hovertemplate=f"{col}<br>%{{x}}<br>%{{y:.2f}}<extra></extra>"
+            ))
     
-    with col2:
-        # Bar chart de correlaciones con EUR/USD
-        colors_bar = [COLORS['positive'] if x >= 0 else COLORS['negative'] for x in eurusd_corr.values]
-        
-        fig_bar = go.Figure(data=go.Bar(
-            y=eurusd_corr.index,
-            x=eurusd_corr.values,
-            orientation='h',
-            marker=dict(color=colors_bar, line=dict(width=0)),
-            hovertemplate="<b>%{y}</b><br>Correlación: %{x:.3f}<extra></extra>"
-        ))
-        
-        fig_bar.update_layout(
-            **PLOTLY_LAYOUT,
-            height=500,
-            title=dict(text="Correlación vs EUR/USD", font=dict(size=16, color=COLORS['gold'])),
-            xaxis=dict(range=[-1, 1], dtick=0.25)
-        )
-        
-        st.plotly_chart(fig_bar, use_container_width=True)
+    fig.add_hline(y=100, line_dash="dash", line_color=COLORS['grid'], opacity=0.5)
     
-    # Info box
-    st.markdown("""
-    <div class="info-box">
-        <strong>💡 Interpretación:</strong> Una correlación positiva indica que el activo tiende a subir cuando el EUR se 
-        fortalece frente al USD. Una correlación negativa indica lo contrario. Valores cercanos a ±1 indican una 
-        relación muy fuerte.
-    </div>
-    """, unsafe_allow_html=True)
+    fig.update_layout(
+        **get_plotly_layout(500),
+        title=dict(text="Evolución de Precios (Base 100)", font=dict(size=16, color=COLORS['gold'])),
+        hovermode='x unified',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    )
+    
+    st.plotly_chart(fig, width="stretch")
+    
+    # Tabla de rendimientos
+    st.markdown("#### Rendimiento del Período")
+    
+    perf_data = []
+    for col in cum_returns.columns:
+        ret = (cum_returns[col].iloc[-1] / 100 - 1) * 100
+        vol = returns[col].std() * np.sqrt(252) * 100
+        sharpe = (ret / vol) if vol > 0 else 0
+        perf_data.append({
+            'Activo': col,
+            'Rendimiento': f"{ret:+.2f}%",
+            'Volatilidad': f"{vol:.1f}%",
+            'Sharpe': f"{sharpe:.2f}"
+        })
+    
+    perf_df = pd.DataFrame(perf_data)
+    st.dataframe(perf_df, hide_index=True, width="stretch")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 2: ANÁLISIS BETA
+# TAB 2: IMPACTO EUR/USD
 # ─────────────────────────────────────────────────────────────────────────────
 
 with tab2:
-    st.markdown("### Sensibilidad (Beta) al EUR/USD")
+    st.markdown("### Sensibilidad al EUR/USD")
     
-    # Calcular betas para todos los activos
-    betas_data = []
+    # Calcular betas y correlaciones
+    impact_data = []
     for asset in selected_assets:
         if asset in returns.columns:
             beta_info = calculate_beta(returns, asset, "EUR/USD")
-            betas_data.append({
+            corr = returns[asset].corr(returns["EUR/USD"])
+            impact_data.append({
                 'Activo': asset,
                 'Beta': beta_info['beta'],
-                'Alpha (Ann.)': beta_info['alpha'] * 100,
+                'Correlación': corr,
                 'R²': beta_info['r_squared'],
-                'P-Value': beta_info['p_value']
+                'P-Value': beta_info['p_value'],
+                'Significativo': '✓' if beta_info['p_value'] < 0.05 else '✗'
             })
     
-    betas_df = pd.DataFrame(betas_data).sort_values('Beta', ascending=False)
+    impact_df = pd.DataFrame(impact_data).sort_values('Beta', ascending=False)
     
-    col1, col2 = st.columns([1.5, 1])
+    col1, col2 = st.columns([1.2, 1])
     
     with col1:
-        # Scatter plot con línea de regresión para activo seleccionado
-        selected_asset = st.selectbox("Seleccionar activo para detalle:", selected_assets)
+        # Gráfico de barras de Beta
+        colors_bar = [COLORS['positive'] if x >= 0 else COLORS['negative'] for x in impact_df['Beta']]
         
-        if selected_asset in returns.columns:
-            fig_scatter = go.Figure()
-            
-            # Puntos de dispersión
-            fig_scatter.add_trace(go.Scatter(
-                x=returns["EUR/USD"],
-                y=returns[selected_asset],
-                mode='markers',
-                marker=dict(
-                    color=COLORS['gold'],
-                    size=6,
-                    opacity=0.5,
-                    line=dict(width=1, color=COLORS['gold_light'])
-                ),
-                name='Retornos diarios',
-                hovertemplate="EUR/USD: %{x:.3%}<br>" + selected_asset + ": %{y:.3%}<extra></extra>"
-            ))
-            
-            # Línea de regresión
-            beta_info = calculate_beta(returns, selected_asset, "EUR/USD")
-            x_line = np.linspace(returns["EUR/USD"].min(), returns["EUR/USD"].max(), 100)
-            y_line = beta_info['alpha']/252 + beta_info['beta'] * x_line
-            
-            fig_scatter.add_trace(go.Scatter(
-                x=x_line,
-                y=y_line,
-                mode='lines',
-                line=dict(color=COLORS['positive'], width=2, dash='dash'),
-                name=f'Regresión (β={beta_info["beta"]:.2f})'
-            ))
-            
-            fig_scatter.update_layout(
-                **PLOTLY_LAYOUT,
-                height=450,
-                title=dict(
-                    text=f"Regresión {selected_asset} vs EUR/USD",
-                    font=dict(size=16, color=COLORS['gold'])
-                ),
-                xaxis_title="Retorno EUR/USD",
-                yaxis_title=f"Retorno {selected_asset}",
-                showlegend=True
-            )
-            
-            st.plotly_chart(fig_scatter, use_container_width=True)
+        fig = go.Figure(data=go.Bar(
+            x=impact_df['Activo'],
+            y=impact_df['Beta'],
+            marker=dict(color=colors_bar),
+            text=[f"{b:.2f}" for b in impact_df['Beta']],
+            textposition='outside',
+            textfont=dict(color=COLORS['text']),
+            hovertemplate="<b>%{x}</b><br>Beta: %{y:.3f}<extra></extra>"
+        ))
+        
+        fig.add_hline(y=0, line_color=COLORS['grid'])
+        
+        fig.update_layout(
+            **get_plotly_layout(400),
+            title=dict(text="Beta vs EUR/USD", font=dict(size=16, color=COLORS['gold']))
+        )
+        
+        st.plotly_chart(fig, width="stretch")
     
     with col2:
-        # Tabla de betas con formato
-        st.markdown("#### Ranking por Beta")
+        # Gráfico de correlación
+        colors_corr = [COLORS['positive'] if x >= 0 else COLORS['negative'] for x in impact_df['Correlación']]
         
-        for _, row in betas_df.iterrows():
-            beta_color = "positive" if row['Beta'] >= 0 else "negative"
-            significance = "✓" if row['P-Value'] < 0.05 else "✗"
-            
-            st.markdown(f"""
-            <div class="metric-card" style="margin-bottom: 8px; padding: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <span style="font-weight: 600; color: {COLORS['text']};">{row['Activo']}</span>
-                        <span style="color: {COLORS['text_secondary']}; font-size: 0.8rem; margin-left: 8px;">R²: {row['R²']:.2%}</span>
-                    </div>
-                    <div>
-                        <span class="metric-value {beta_color}" style="font-size: 1.2rem;">{row['Beta']:.3f}</span>
-                        <span style="color: {COLORS['text_secondary']}; font-size: 0.7rem; margin-left: 4px;">{significance}</span>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        fig2 = go.Figure(data=go.Bar(
+            y=impact_df['Activo'],
+            x=impact_df['Correlación'],
+            orientation='h',
+            marker=dict(color=colors_corr),
+            text=[f"{c:.2f}" for c in impact_df['Correlación']],
+            textposition='outside',
+            textfont=dict(color=COLORS['text']),
+            hovertemplate="<b>%{y}</b><br>Corr: %{x:.3f}<extra></extra>"
+        ))
+        
+        fig2.add_vline(x=0, line_color=COLORS['grid'])
+        
+        fig2.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family='DM Sans, sans-serif', color=COLORS['text']),
+            height=400,
+            margin=dict(l=20, r=20, t=50, b=20),
+            xaxis=dict(gridcolor=COLORS['grid'], zerolinecolor=COLORS['grid'], range=[-1, 1]),
+            yaxis=dict(gridcolor=COLORS['grid'], zerolinecolor=COLORS['grid']),
+            title=dict(text="Correlación vs EUR/USD", font=dict(size=16, color=COLORS['gold']))
+        )
+        
+        st.plotly_chart(fig2, width="stretch")
+    
+    # Tabla detallada
+    st.markdown("#### Detalle de Impacto")
+    
+    display_df = impact_df.copy()
+    display_df['Beta'] = display_df['Beta'].apply(lambda x: f"{x:.3f}")
+    display_df['Correlación'] = display_df['Correlación'].apply(lambda x: f"{x:.3f}")
+    display_df['R²'] = display_df['R²'].apply(lambda x: f"{x:.2%}")
+    display_df['P-Value'] = display_df['P-Value'].apply(lambda x: f"{x:.4f}")
+    
+    st.dataframe(display_df, hide_index=True, width="stretch")
     
     st.markdown("""
     <div class="info-box">
-        <strong>💡 Interpretación del Beta:</strong> Un beta de 0.5 significa que por cada 1% que sube el EUR/USD, 
-        el activo tiende a subir un 0.5%. Beta negativo indica relación inversa. ✓ indica significancia estadística (p<0.05).
+        <strong>💡 Interpretación:</strong> Beta indica cuánto se mueve el activo por cada 1% de movimiento en EUR/USD. 
+        Un beta de 0.5 significa que si EUR/USD sube 1%, el activo sube ~0.5%. ✓ indica significancia estadística (p<0.05).
     </div>
     """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 3: ROLLING ANALYSIS
+# TAB 3: CORRELACIÓN ROLLING
 # ─────────────────────────────────────────────────────────────────────────────
 
 with tab3:
@@ -666,40 +514,39 @@ with tab3:
     
     rolling_corr = calculate_rolling_correlation(returns, "EUR/USD", rolling_window)
     
-    # Gráfico de correlaciones rolling
-    fig_rolling = go.Figure()
+    fig = go.Figure()
     
     for i, col in enumerate(rolling_corr.columns):
-        fig_rolling.add_trace(go.Scatter(
+        fig.add_trace(go.Scatter(
             x=rolling_corr.index,
             y=rolling_corr[col],
             mode='lines',
             name=col,
             line=dict(color=COLORS['palette'][i % len(COLORS['palette'])], width=2),
-            hovertemplate=f"<b>{col}</b><br>Fecha: %{{x}}<br>Correlación: %{{y:.3f}}<extra></extra>"
+            hovertemplate=f"<b>{col}</b><br>%{{x}}<br>Corr: %{{y:.3f}}<extra></extra>"
         ))
     
-    # Añadir línea de referencia en 0
-    fig_rolling.add_hline(y=0, line_dash="dash", line_color=COLORS['grid'], opacity=0.7)
+    fig.add_hline(y=0, line_dash="dash", line_color=COLORS['text_secondary'], opacity=0.5)
+    fig.add_hrect(y0=0.5, y1=1, fillcolor=COLORS['positive'], opacity=0.05, line_width=0)
+    fig.add_hrect(y0=-1, y1=-0.5, fillcolor=COLORS['negative'], opacity=0.05, line_width=0)
     
-    # Áreas de correlación fuerte
-    fig_rolling.add_hrect(y0=0.5, y1=1, fillcolor=COLORS['positive'], opacity=0.05, line_width=0)
-    fig_rolling.add_hrect(y0=-1, y1=-0.5, fillcolor=COLORS['negative'], opacity=0.05, line_width=0)
-    
-    fig_rolling.update_layout(
-        **PLOTLY_LAYOUT,
-        height=500,
-        title=dict(text="Evolución Temporal de Correlaciones", font=dict(size=16, color=COLORS['gold'])),
-        yaxis=dict(range=[-1, 1], dtick=0.25, **PLOTLY_LAYOUT['yaxis']),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='DM Sans, sans-serif', color=COLORS['text']),
+        height=450,
+        margin=dict(l=20, r=20, t=50, b=20),
+        xaxis=dict(gridcolor=COLORS['grid'], zerolinecolor=COLORS['grid']),
+        yaxis=dict(gridcolor=COLORS['grid'], zerolinecolor=COLORS['grid'], range=[-1, 1], dtick=0.25),
+        title=dict(text="Evolución de Correlaciones", font=dict(size=16, color=COLORS['gold'])),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, bgcolor='rgba(26,26,36,0.8)')
     )
     
-    st.plotly_chart(fig_rolling, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     
-    # Estadísticas de rolling
-    st.markdown("#### Estadísticas de Correlación Rolling")
-    
-    rolling_stats = pd.DataFrame({
+    # Stats
+    st.markdown("#### Estadísticas")
+    stats_df = pd.DataFrame({
         'Media': rolling_corr.mean(),
         'Std': rolling_corr.std(),
         'Mín': rolling_corr.min(),
@@ -707,142 +554,95 @@ with tab3:
         'Actual': rolling_corr.iloc[-1]
     }).round(3)
     
-    st.dataframe(rolling_stats.style.background_gradient(cmap='RdYlGn', axis=None), use_container_width=True)
-    
-    st.markdown("""
-    <div class="info-box">
-        <strong>💡 Insight:</strong> La correlación rolling muestra cómo cambia la relación entre activos a lo largo del tiempo. 
-        Alta variabilidad sugiere que la relación no es estable y el hedge puede ser menos efectivo.
-    </div>
-    """, unsafe_allow_html=True)
+    st.dataframe(stats_df, width="stretch")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TAB 4: PORTFOLIO IMPACT
+# TAB 4: SIMULADOR CARTERA
 # ─────────────────────────────────────────────────────────────────────────────
 
 with tab4:
     st.markdown("### Simulador de Impacto en Cartera")
     
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1, 1.5])
     
     with col1:
-        st.markdown("#### Composición de Cartera")
+        st.markdown("#### Composición")
         
-        # Seleccionar activos para la cartera
         portfolio_assets = st.multiselect(
-            "Activos en cartera:",
+            "Activos:",
             options=[a for a in selected_assets if a in returns.columns],
-            default=[a for a in ["SPY", "EZU", "GLD", "TLT"] if a in returns.columns][:3]
+            default=[a for a in selected_assets if a in returns.columns][:3],
+            key="portfolio_select"
         )
         
         if portfolio_assets:
             weights = {}
-            remaining = 100.0
+            st.markdown("**Pesos (%):**")
             
-            for i, asset in enumerate(portfolio_assets):
-                if i == len(portfolio_assets) - 1:
-                    # Último activo toma el resto
-                    weight = remaining
-                    st.slider(f"{asset}", 0, 100, int(weight), disabled=True, key=f"w_{asset}")
-                else:
-                    weight = st.slider(f"{asset}", 0, int(remaining), int(remaining//(len(portfolio_assets)-i)), key=f"w_{asset}")
-                    remaining -= weight
-                
-                weights[asset] = weight / 100
+            for asset in portfolio_assets:
+                w = st.number_input(f"{asset}", min_value=0, max_value=100, value=100//len(portfolio_assets), key=f"pw_{asset}")
+                weights[asset] = w / 100
+            
+            total_weight = sum(weights.values()) * 100
+            if abs(total_weight - 100) > 0.1:
+                st.warning(f"⚠️ Pesos suman {total_weight:.0f}% (deberían sumar 100%)")
     
     with col2:
-        if portfolio_assets and len(portfolio_assets) >= 2:
-            # Calcular métricas de la cartera
-            portfolio_sensitivity = calculate_portfolio_sensitivity(returns, weights, "EUR/USD")
+        if portfolio_assets and len(portfolio_assets) >= 1:
+            # Calcular retornos de cartera
+            port_returns = sum(returns[a] * weights[a] for a in portfolio_assets)
+            port_cum = (1 + port_returns).cumprod() * 100
             
-            # Métricas de la cartera
-            st.markdown("#### Métricas de Sensibilidad")
+            # Sensibilidad
+            mask = returns["EUR/USD"].dropna().index
+            port_ret = port_returns.loc[mask]
+            fx_ret = returns.loc[mask, "EUR/USD"]
+            
+            port_corr = port_ret.corr(fx_ret)
+            slope, intercept, r_value, p_value, _ = stats.linregress(fx_ret, port_ret)
+            
+            # Métricas
+            st.markdown("#### Sensibilidad de la Cartera")
             
             cols = st.columns(4)
             port_metrics = [
-                ("Correlación", f"{portfolio_sensitivity['correlation']:.3f}"),
-                ("Beta FX", f"{portfolio_sensitivity['beta']:.3f}"),
-                ("R²", f"{portfolio_sensitivity['r_squared']:.2%}"),
-                ("Vol. Contrib.", f"{portfolio_sensitivity['volatility_contribution']:.2%}")
+                ("Correlación", f"{port_corr:.3f}"),
+                ("Beta FX", f"{slope:.3f}"),
+                ("R²", f"{r_value**2:.2%}"),
+                ("P-Value", f"{p_value:.4f}")
             ]
             
             for col, (label, value) in zip(cols, port_metrics):
                 with col:
                     st.metric(label, value)
             
-            # Gráfico de composición
-            fig_pie = go.Figure(data=go.Pie(
-                labels=list(weights.keys()),
-                values=[w*100 for w in weights.values()],
-                hole=0.6,
-                marker=dict(colors=COLORS['palette'][:len(weights)]),
-                textinfo='label+percent',
-                textfont=dict(color=COLORS['text'], size=12)
+            # Escenarios
+            st.markdown("#### Escenarios de Impacto")
+            
+            scenarios = [-10, -5, -2, 2, 5, 10]
+            impacts = [slope * s for s in scenarios]
+            colors_scenario = [COLORS['negative'] if s < 0 else COLORS['positive'] for s in scenarios]
+            
+            fig = go.Figure(data=go.Bar(
+                x=[f"{s:+.0f}%" for s in scenarios],
+                y=impacts,
+                marker=dict(color=colors_scenario),
+                text=[f"{i:+.2f}%" for i in impacts],
+                textposition='outside',
+                textfont=dict(color=COLORS['text']),
+                hovertemplate="EUR/USD: %{x}<br>Impacto: %{y:.2f}%<extra></extra>"
             ))
             
-            fig_pie.update_layout(
-                **PLOTLY_LAYOUT,
-                height=350,
-                showlegend=False,
-                annotations=[dict(
-                    text='Cartera',
-                    x=0.5, y=0.5,
-                    font=dict(size=16, color=COLORS['gold']),
-                    showarrow=False
-                )]
+            fig.update_layout(
+                **get_plotly_layout(300),
+                title=dict(text="Impacto Estimado por Escenario EUR/USD", font=dict(size=14, color=COLORS['gold'])),
+                xaxis_title="Movimiento EUR/USD",
+                yaxis_title="Impacto Cartera (%)"
             )
             
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
-            st.info("Selecciona al menos 2 activos para analizar la cartera")
-    
-    # Escenarios de impacto
-    if portfolio_assets and len(portfolio_assets) >= 2:
-        st.markdown("#### 📊 Escenarios de Impacto FX")
-        
-        scenarios = [-10, -5, -2, 2, 5, 10]  # % cambio en EUR/USD
-        beta = portfolio_sensitivity['beta']
-        
-        scenario_data = []
-        for s in scenarios:
-            impact = beta * s
-            scenario_data.append({
-                'Escenario EUR/USD': f"{s:+.0f}%",
-                'Impacto Estimado Cartera': f"{impact:+.2f}%",
-                'Tipo': 'EUR ↑' if s > 0 else 'EUR ↓'
-            })
-        
-        fig_scenarios = go.Figure()
-        
-        colors_scenario = [COLORS['positive'] if s > 0 else COLORS['negative'] for s in scenarios]
-        impacts = [beta * s for s in scenarios]
-        
-        fig_scenarios.add_trace(go.Bar(
-            x=[f"{s:+.0f}%" for s in scenarios],
-            y=impacts,
-            marker=dict(color=colors_scenario, line=dict(width=0)),
-            text=[f"{i:+.2f}%" for i in impacts],
-            textposition='outside',
-            textfont=dict(color=COLORS['text']),
-            hovertemplate="Cambio EUR/USD: %{x}<br>Impacto Cartera: %{y:.2f}%<extra></extra>"
-        ))
-        
-        fig_scenarios.update_layout(
-            **PLOTLY_LAYOUT,
-            height=350,
-            title=dict(text="Impacto Estimado por Escenario", font=dict(size=16, color=COLORS['gold'])),
-            xaxis_title="Movimiento EUR/USD",
-            yaxis_title="Impacto en Cartera (%)"
-        )
-        
-        st.plotly_chart(fig_scenarios, use_container_width=True)
-        
-        st.markdown("""
-        <div class="info-box">
-            <strong>⚠️ Nota:</strong> Estos escenarios son estimaciones basadas en relaciones históricas. 
-            El impacto real puede variar significativamente, especialmente en condiciones de mercado extremas.
-        </div>
-        """, unsafe_allow_html=True)
+            st.info("Selecciona activos para la cartera")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FOOTER
@@ -850,13 +650,9 @@ with tab4:
 
 st.markdown("---")
 st.markdown(f"""
-<div style="text-align: center; color: {COLORS['text_secondary']}; padding: 2rem 0;">
-    <p style="font-size: 0.85rem;">
-        EUR/USD Impact Analyzer • Datos: Yahoo Finance • 
-        Período: {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}
-    </p>
-    <p style="font-size: 0.75rem; margin-top: 0.5rem;">
-        ⚠️ Esta herramienta es solo para fines educativos y de investigación. No constituye asesoramiento financiero.
-    </p>
+<div style="text-align: center; color: {COLORS['text_secondary']}; padding: 1rem 0; font-size: 0.8rem;">
+    EUR/USD Impact Analyzer • Datos: Yahoo Finance • 
+    {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}<br>
+    ⚠️ Solo para fines educativos. No constituye asesoramiento financiero.
 </div>
 """, unsafe_allow_html=True)
